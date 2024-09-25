@@ -1,5 +1,6 @@
 import { Header } from "./Header"
 import { Footer } from "./Footer"
+import { MapsPage } from "./MapsPage"
 import Maps from './Maps'; 
 
 
@@ -15,6 +16,7 @@ function App () {
       <Header />
       <Footer />
       <Maps />
+      <MapsPage />
     </div>
   )
 }

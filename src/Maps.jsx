@@ -2,14 +2,17 @@ import React, { useEffect, useState } from 'react';
 import './Maps.css'; // Ensure you have a CSS file for styles
 
 const Maps = () => {
+  const [location1, setLocation1] = useState('');
+  const [location2, setLocation2] = useState('');
   const [distances, setDistances] = useState([]);
+  const [map, setMap] = useState(null);
 
   useEffect(() => {
     const loadGoogleMaps = () => {
       if (!document.getElementById('google-maps-script')) {
         const script = document.createElement('script');
         script.id = 'google-maps-script';
-        script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyC336edFYRyUPOp7bn1lGi7DXo2w4yQ5lg&libraries=geometry&callback=initMap`;
+        script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyC336edFYRyUPOp7bn1lGi7DXo2w4yQ5lg&libraries=geometry,places&callback=initMap`;
         script.async = true;
         script.defer = true;
         document.body.appendChild(script);
@@ -20,88 +23,79 @@ const Maps = () => {
 
     // Define the initMap function globally
     window.initMap = () => {
-      const map = new google.maps.Map(document.getElementById("map"), {
+      const initializedMap = new google.maps.Map(document.getElementById("map"), {
         zoom: 13,
-        center: { lat: 59.325, lng: 18.07 },
+        center: { lat: 59.325, lng: 18.07 }, // Initial center
       });
-
-      // Array of locations for multiple markers
-      const tourStops = [
-        { position: { lat: 59.327, lng: 18.067 }, title: "Marker 1" },
-        { position: { lat: 59.325, lng: 18.10 }, title: "Marker 2" },
-        { position: { lat: 59.32, lng: 18.05 }, title: "Marker 3" },
-        { position: { lat: 59.34, lng: 18.08 }, title: "Marker 4" },
-        { position: { lat: 59.30, lng: 18.09 }, title: "Marker 5" },
-      ];
-
-      // Create markers
-      const markers = tourStops.map(stop => {
-        const marker = new google.maps.Marker({
-          position: stop.position,
-          map,
-          title: stop.title,
-          draggable: true,
-          animation: google.maps.Animation.DROP,
-        });
-
-        // Add click listener to toggle animation
-        marker.addListener('click', () => {
-          toggleBounce(marker);
-        });
-
-        // Add listener to update distances on marker drag end
-        marker.addListener('dragend', () => {
-          calculateDistances(markers);
-        });
-
-        return marker; // Return the marker for distance calculations
-      });
-
-      // Calculate distances between markers
-      calculateDistances(markers);
-    };
-
-    // Toggle bounce animation on marker click
-    const toggleBounce = (marker) => {
-      if (marker.getAnimation() !== null) {
-        marker.setAnimation(null);
-      } else {
-        marker.setAnimation(google.maps.Animation.BOUNCE);
-      }
-    };
-
-    // Calculate distances between markers
-    const calculateDistances = (markers) => {
-      const distancesArray = [];
-      for (let i = 0; i < markers.length; i++) {
-        for (let j = i + 1; j < markers.length; j++) {
-          const distanceInMeters = google.maps.geometry.spherical.computeDistanceBetween(
-            markers[i].getPosition(),
-            markers[j].getPosition()
-          );
-
-          const distanceInMiles = (distanceInMeters * 0.000621371).toFixed(2); // Convert to miles
-
-          distancesArray.push({
-            from: markers[i].getTitle(),
-            to: markers[j].getTitle(),
-            distance: distanceInMiles // Store distance in miles
-          });
-        }
-      }
-      setDistances(distancesArray); // Set the distances in state
+      setMap(initializedMap);
     };
   }, []);
 
+  const calculateDistance = () => {
+    const geocoder = new google.maps.Geocoder();
+
+    // Geocode location1
+    geocoder.geocode({ address: location1 }, (results1, status) => {
+      if (status === google.maps.GeocoderStatus.OK) {
+        const position1 = results1[0].geometry.location;
+
+        // Geocode location2
+        geocoder.geocode({ address: location2 }, (results2, status) => {
+          if (status === google.maps.GeocoderStatus.OK) {
+            const position2 = results2[0].geometry.location;
+
+            // Calculate distance
+            const distanceInMeters = google.maps.geometry.spherical.computeDistanceBetween(position1, position2);
+            const distanceInMiles = (distanceInMeters * 0.000621371).toFixed(2); // Convert to miles
+
+            setDistances([{
+              from: location1,
+              to: location2,
+              distance: distanceInMiles,
+            }]);
+
+            // Optionally, you can center the map between the two locations
+            const centerLat = (position1.lat() + position2.lat()) / 2;
+            const centerLng = (position1.lng() + position2.lng()) / 2;
+            map.setCenter({ lat: centerLat, lng: centerLng });
+
+            // Create markers for both locations
+            new google.maps.Marker({ position: position1, map, title: location1 });
+            new google.maps.Marker({ position: position2, map, title: location2 });
+          } else {
+            alert('Geocode was not successful for the second location: ' + status);
+          }
+        });
+      } else {
+        alert('Geocode was not successful for the first location: ' + status);
+      }
+    });
+  };
+
   return (
     <div>
-      <h1>Maps Page</h1>
-      <div id="map"></div>
-      <h2>Distances Between Markers</h2>
+      <h1>Maps</h1>
+      <div>
+        <input
+          type="text"
+          placeholder="Enter first location"
+          value={location1}
+          onChange={(e) => setLocation1(e.target.value)}
+        />
+        <input
+          type="text"
+          placeholder="Enter second location"
+          value={location2}
+          onChange={(e) => setLocation2(e.target.value)}
+        />
+        <button onClick={calculateDistance}>Calculate Distance</button>
+      </div>
+      <div id="map" style={{ height: '500px', width: '100%' }}></div>
+      <h2>Distances</h2>
       <ul>
         {distances.map((d, index) => (
           <li key={index}>
-            {d.from} to {d.to}: {d.distance} miles
+            From {d.from} to {d.to}: {d.distance} miles
           </li>
         ))}
       </ul>
