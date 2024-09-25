@@ -1,0 +1,9 @@
+/* MapsPage.css */
+#map {
+  height: 500px;
+  /* Set the height of the map */
+  width: 50%;
+  /* Set the width of the map */
+  margin: left;
+  /* Center the map horizontally */
+}
